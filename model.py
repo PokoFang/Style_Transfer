@@ -28,9 +28,32 @@ def cal_layer_style_cost(a_G, a_S): # For a specific layer, the similarity betwe
 	GS = gram_matrix(a_S) 
 
 	style_cost = tf.reduce_sum(tf.square(tf.subtract(GG, GS))) / (4 * (n_c * n_h * n_w) ** 2)
+	return layer_style_cost
+
+def cal_style_cost(model, style_layers):
+	style_cost = 0
+	for layer, coefficent in style_layers:
+		out = model[layer]
+		a_S = sess.run(out)
+		a_G = out
+		layer_style_cost = cal_layer_style_cost(a_G, a_S)		
+		style_cost += coefficent * layer_style_cost
 	return style_cost
 
+def total_cost(content_cost, style_cost, alpha = 10, beta = 40):
+	cost = alpha * content_cost + beta * style_cost
+	return cost
 
 if __name__ == '__main__':
 	content_img = scipy.misc.imread('image/content.jpg')
 	style_img = scipy.misc.imread('image/style.jpg')
+
+	model = load_vgg_model('imagenet-vgg-verydeep-19.mat')
+	style_layers = [('conv1_1', 0.2),
+					('conv2_1', 0.2),
+					('conv3_1', 0.2),
+					('conv4_1', 0.2),
+					('conv5_1', 0.2)]
+
+
+	sess.run(model["conv4_2"])
