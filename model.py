@@ -4,7 +4,9 @@ import tensorflow as tf
 import vgg
 import scipy.misc
 from PIL import Image
+import matplotlib.pyplot as plt
 import os
+import nst_utils as p
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def cal_content_cost(a_G, a_C):
@@ -44,10 +46,26 @@ def total_cost(content_cost, style_cost, alpha = 10, beta = 40):
 	cost = alpha * content_cost + beta * style_cost
 	return cost
 
+def normalize_img(image):
+	mean = np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) 
+	image = np.reshape(image, ((1,) + image.shape))
+	image = image - mean
+	return image
+
+def generate_img(noise_ratio, content_img):
+	noise_img = np.random.uniform(-20, 20, content_img.shape).astype('float32')
+	generated_img = noise_ratio * noise_img + (1 - noise_ratio) * content_img
+	return generated_img
+
 if __name__ == '__main__':
 	content_img = scipy.misc.imread('image/content.jpg')
+	content_img = normalize_img(content_img) # shape: (1, 1, 300, 400)
 	style_img = scipy.misc.imread('image/style.jpg')
-
+	style_img = normalize_img(style_img)
+	generated_img = generate_img(0.6, content_img) # choose 0.6 as noise ratio
+	plt.imshow(np.clip(generated_img[0], 0.0, 1.0)) # or use: plt.imshow(generated_img[0].astype(np.uint8))
+	plt.show()
+	'''
 	model = load_vgg_model('imagenet-vgg-verydeep-19.mat')
 	style_layers = [('conv1_1', 0.2),
 					('conv2_1', 0.2),
@@ -57,3 +75,4 @@ if __name__ == '__main__':
 
 
 	sess.run(model["conv4_2"])
+	'''
