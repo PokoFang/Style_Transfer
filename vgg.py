@@ -111,5 +111,5 @@ def load_vgg_model(path):
 	graph['avgpool5'] = _avgpool(graph['conv5_4'])
 	return graph
    
-graph = load_vgg_model('imagenet-vgg-verydeep-19.mat')
-print(graph)
+#graph = load_vgg_model('imagenet-vgg-verydeep-19.mat')
+#print(graph)

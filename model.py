@@ -1,7 +1,7 @@
 import scipy.io
 import numpy as np
 import tensorflow as tf
-import vgg
+from vgg import *
 import scipy.misc
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ def cal_layer_style_cost(a_G, a_S): # For a specific layer, the similarity betwe
 	GG = gram_matrix(a_G) # gram matrix of generated matrix
 	GS = gram_matrix(a_S) 
 
-	style_cost = tf.reduce_sum(tf.square(tf.subtract(GG, GS))) / (4 * (n_c * n_h * n_w) ** 2)
+	layer_style_cost = tf.reduce_sum(tf.square(tf.subtract(GG, GS))) / (4 * (n_c * n_h * n_w) ** 2)
 	return layer_style_cost
 
 def cal_style_cost(model, style_layers):
@@ -57,22 +57,59 @@ def generate_img(noise_ratio, content_img):
 	generated_img = noise_ratio * noise_img + (1 - noise_ratio) * content_img
 	return generated_img
 
+def save_img(file_name, generate_img):
+	mean = np.array([123.68, 116.779, 103.939]).reshape((1,1,1,3)) 
+	generate_img = generate_img + mean
+	generate_img = np.clip(generate_img[0], 0, 255).astype('uint8')
+	scipy.misc.imsave(file_name, generate_img)
+
+
 if __name__ == '__main__':
 	content_img = scipy.misc.imread('image/content.jpg')
 	content_img = normalize_img(content_img) # shape: (1, 1, 300, 400)
-	style_img = scipy.misc.imread('image/style.jpg')
+	style_img = scipy.misc.imread('image/style_kusamayayoi.jpg')
 	style_img = normalize_img(style_img)
 	generated_img = generate_img(0.6, content_img) # choose 0.6 as noise ratio
-	plt.imshow(np.clip(generated_img[0], 0.0, 1.0)) # or use: plt.imshow(generated_img[0].astype(np.uint8))
-	plt.show()
-	'''
+	# plt.imshow(np.clip(generated_img[0], 0.0, 1.0)) # or use: plt.imshow(generated_img[0].astype(np.uint8))
+	# plt.show()
+
+	print('Content')
+	tf.reset_default_graph()
+	sess = tf.InteractiveSession() # 使用預設的 session，不再需要建構 with session 
+	# content
 	model = load_vgg_model('imagenet-vgg-verydeep-19.mat')
+	sess.run(model['input'].assign(content_img))
+	out = model['conv4_2'] # choose layer 'conv4_2'
+	a_C = sess.run(out)
+	a_G = out
+	content_cost = cal_content_cost(a_G, a_C)
+
+	# style
+	print('Style')
+	sess.run(model['input'].assign(style_img))
 	style_layers = [('conv1_1', 0.2),
 					('conv2_1', 0.2),
 					('conv3_1', 0.2),
 					('conv4_1', 0.2),
 					('conv5_1', 0.2)]
+	style_cost = cal_style_cost(model, style_layers) 
 
+	# run optimizer to generate image 
+	cost = total_cost(content_cost, style_cost, alpha = 10, beta = 50)
+	print('Start Optimizer')
+	train_op = tf.train.AdamOptimizer(2.0).minimize(cost)
+	iteration = 201
+	sess.run(tf.global_variables_initializer())
+	sess.run(model['input'].assign(generated_img))
+	for i in range(iteration):
+		print(i)
+		sess.run(train_op)
+		generated_img = sess.run(model['input'])
 
-	sess.run(model["conv4_2"])
-	'''
+		if i % 50 == 0:
+			t_cost, c_cost, s_cost = sess.run([cost, content_cost, style_cost])
+			print('Iteration%d: '%i)
+			print('Total cost: ', t_cost)
+			print('Content cost: ', c_cost)
+			print('Style cost: ', s_cost)
+			save_img('output/turtle_k%d.png'%i, generated_img)
