@@ -1,5 +1,4 @@
 # Style_Transfer
-Date: 23 Nov 2018
 
 This program aims to generate images with specific styles. 
 For example, this is the original image:
